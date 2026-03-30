@@ -16,6 +16,7 @@ from zep_cloud.client import Zep
 
 from ..config import Config
 from ..utils.logger import get_logger
+from .graph_backend import GraphBackend, get_graph_backend
 
 logger = get_logger('mirofish.zep_graph_memory_updater')
 
@@ -228,7 +229,12 @@ class ZepGraphMemoryUpdater:
     MAX_RETRIES = 3
     RETRY_DELAY = 2  # 秒
     
-    def __init__(self, graph_id: str, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        graph_id: str,
+        api_key: Optional[str] = None,
+        graph_backend: Optional[GraphBackend] = None,
+    ):
         """
         初始化更新器
         
@@ -237,12 +243,17 @@ class ZepGraphMemoryUpdater:
             api_key: Zep API Key（可选，默认从配置读取）
         """
         self.graph_id = graph_id
+        self.backend_name = Config.GRAPH_BACKEND.lower()
         self.api_key = api_key or Config.ZEP_API_KEY
-        
-        if not self.api_key:
-            raise ValueError("ZEP_API_KEY未配置")
-        
-        self.client = Zep(api_key=self.api_key)
+        self.client = None
+        self.graph_backend = None
+
+        if self.backend_name == "graphiti":
+            self.graph_backend = graph_backend or get_graph_backend()
+        else:
+            if not self.api_key:
+                raise ValueError("ZEP_API_KEY未配置")
+            self.client = Zep(api_key=self.api_key)
         
         # 活动队列
         self._activity_queue: Queue = Queue()
@@ -405,16 +416,29 @@ class ZepGraphMemoryUpdater:
         # 带重试的发送
         for attempt in range(self.MAX_RETRIES):
             try:
-                self.client.graph.add(
-                    graph_id=self.graph_id,
-                    type="text",
-                    data=combined_text
-                )
+                if self.backend_name == "graphiti":
+                    self.graph_backend.append_episode(
+                        graph_id=self.graph_id,
+                        content=combined_text,
+                        source="simulation_runtime",
+                        metadata={
+                            "platform": platform,
+                            "batch_size": len(activities),
+                        },
+                    )
+                else:
+                    self.client.graph.add(
+                        graph_id=self.graph_id,
+                        type="text",
+                        data=combined_text
+                    )
                 
                 self._total_sent += 1
                 self._total_items_sent += len(activities)
                 display_name = self._get_platform_display_name(platform)
-                logger.info(f"成功批量发送 {len(activities)} 条{display_name}活动到图谱 {self.graph_id}")
+                logger.info(
+                    f"成功批量发送 {len(activities)} 条{display_name}活动到图谱 {self.graph_id}"
+                )
                 logger.debug(f"批量内容预览: {combined_text[:200]}...")
                 return
                 

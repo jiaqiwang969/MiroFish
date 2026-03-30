@@ -32,7 +32,19 @@ class Config:
     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')
     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')
     
-    # Zep配置
+    # 图谱后端配置
+    GRAPH_BACKEND = os.environ.get('GRAPH_BACKEND', 'graphiti').lower()
+    GRAPHITI_SERVICE_URL = os.environ.get('GRAPHITI_SERVICE_URL')
+    GRAPHITI_DB_PATH = os.environ.get('GRAPHITI_DB_PATH')
+    GRAPHITI_EMBEDDING_MODEL = os.environ.get('GRAPHITI_EMBEDDING_MODEL')
+    GRAPHITI_REQUEST_TIMEOUT_SECONDS = float(
+        os.environ.get('GRAPHITI_REQUEST_TIMEOUT_SECONDS', '300')
+    )
+    GRAPHITI_BUILD_BATCH_SIZE = int(
+        os.environ.get('GRAPHITI_BUILD_BATCH_SIZE', '2')
+    )
+
+    # Zep配置（兼容旧实现，后续逐步移除）
     ZEP_API_KEY = os.environ.get('ZEP_API_KEY')
     
     # 文件上传配置
@@ -41,8 +53,8 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'md', 'txt', 'markdown'}
     
     # 文本处理配置
-    DEFAULT_CHUNK_SIZE = 500  # 默认切块大小
-    DEFAULT_CHUNK_OVERLAP = 50  # 默认重叠大小
+    DEFAULT_CHUNK_SIZE = 6500  # 默认切块大小
+    DEFAULT_CHUNK_OVERLAP = 650  # 默认重叠大小
     
     # OASIS模拟配置
     OASIS_DEFAULT_MAX_ROUNDS = int(os.environ.get('OASIS_DEFAULT_MAX_ROUNDS', '10'))
@@ -69,7 +81,14 @@ class Config:
         errors = []
         if not cls.LLM_API_KEY:
             errors.append("LLM_API_KEY 未配置")
-        if not cls.ZEP_API_KEY:
-            errors.append("ZEP_API_KEY 未配置")
-        return errors
 
+        if cls.GRAPH_BACKEND == 'graphiti':
+            if not cls.GRAPHITI_SERVICE_URL:
+                errors.append("GRAPHITI_SERVICE_URL 未配置")
+        elif cls.GRAPH_BACKEND == 'zep':
+            if not cls.ZEP_API_KEY:
+                errors.append("ZEP_API_KEY 未配置")
+        else:
+            errors.append(f"GRAPH_BACKEND 不支持: {cls.GRAPH_BACKEND}")
+
+        return errors

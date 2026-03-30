@@ -22,6 +22,21 @@ from ..models.project import ProjectManager, ProjectStatus
 logger = get_logger('mirofish.api')
 
 
+def _validate_graph_backend_config() -> list[str]:
+    """验证图谱后端相关配置"""
+    if Config.GRAPH_BACKEND == "graphiti":
+        if not Config.GRAPHITI_SERVICE_URL:
+            return ["GRAPHITI_SERVICE_URL未配置"]
+        return []
+
+    if Config.GRAPH_BACKEND == "zep":
+        if not Config.ZEP_API_KEY:
+            return ["ZEP_API_KEY未配置"]
+        return []
+
+    return [f"GRAPH_BACKEND不支持: {Config.GRAPH_BACKEND}"]
+
+
 def allowed_file(filename: str) -> bool:
     """检查文件扩展名是否允许"""
     if not filename or '.' not in filename:
@@ -265,8 +280,8 @@ def build_graph():
         {
             "project_id": "proj_xxxx",  // 必填，来自接口1
             "graph_name": "图谱名称",    // 可选
-            "chunk_size": 500,          // 可选，默认500
-            "chunk_overlap": 50         // 可选，默认50
+            "chunk_size": 6500,         // 可选，默认6500
+            "chunk_overlap": 650        // 可选，默认650
         }
         
     返回：
@@ -283,9 +298,7 @@ def build_graph():
         logger.info("=== 开始构建图谱 ===")
         
         # 检查配置
-        errors = []
-        if not Config.ZEP_API_KEY:
-            errors.append("ZEP_API_KEY未配置")
+        errors = _validate_graph_backend_config()
         if errors:
             logger.error(f"配置错误: {errors}")
             return jsonify({
@@ -382,7 +395,7 @@ def build_graph():
                 )
                 
                 # 创建图谱构建服务
-                builder = GraphBuilderService(api_key=Config.ZEP_API_KEY)
+                builder = GraphBuilderService()
                 
                 # 分块
                 task_manager.update_task(
@@ -435,7 +448,11 @@ def build_graph():
                 episode_uuids = builder.add_text_batches(
                     graph_id, 
                     chunks,
-                    batch_size=3,
+                    batch_size=(
+                        Config.GRAPHITI_BUILD_BATCH_SIZE
+                        if Config.GRAPH_BACKEND == "graphiti"
+                        else 3
+                    ),
                     progress_callback=add_progress_callback
                 )
                 
@@ -567,13 +584,14 @@ def get_graph_data(graph_id: str):
     获取图谱数据（节点和边）
     """
     try:
-        if not Config.ZEP_API_KEY:
+        errors = _validate_graph_backend_config()
+        if errors:
             return jsonify({
                 "success": False,
-                "error": "ZEP_API_KEY未配置"
+                "error": "; ".join(errors)
             }), 500
-        
-        builder = GraphBuilderService(api_key=Config.ZEP_API_KEY)
+
+        builder = GraphBuilderService()
         graph_data = builder.get_graph_data(graph_id)
         
         return jsonify({
@@ -595,13 +613,14 @@ def delete_graph(graph_id: str):
     删除Zep图谱
     """
     try:
-        if not Config.ZEP_API_KEY:
+        errors = _validate_graph_backend_config()
+        if errors:
             return jsonify({
                 "success": False,
-                "error": "ZEP_API_KEY未配置"
+                "error": "; ".join(errors)
             }), 500
-        
-        builder = GraphBuilderService(api_key=Config.ZEP_API_KEY)
+
+        builder = GraphBuilderService()
         builder.delete_graph(graph_id)
         
         return jsonify({

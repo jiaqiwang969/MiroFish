@@ -1,0 +1,71 @@
+\contentsline {chapter}{\numberline {第一章\hspace {.3em}}问题定义：这到底是不是一个摘要问题}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}表面任务与真实任务}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}为什么不能直接把 PDF 扔给大模型}{1}{section.1.2}%
+\contentsline {paragraph}{第一，输入太原始。}{1}{paragraph*.3}%
+\contentsline {paragraph}{第二，信息不可复用。}{1}{paragraph*.4}%
+\contentsline {paragraph}{第三，信息不可检索。}{1}{paragraph*.5}%
+\contentsline {paragraph}{第四，信息不可推演。}{1}{paragraph*.6}%
+\contentsline {chapter}{\numberline {第二章\hspace {.3em}}第一性原理：为什么必须有中间世界模型}{2}{chapter.2}%
+\contentsline {section}{\numberline {2.1}信息处理的三层目标}{2}{section.2.1}%
+\contentsline {section}{\numberline {2.2}从载体到世界模型}{2}{section.2.2}%
+\contentsline {section}{\numberline {2.3}每一层都在保留什么、丢弃什么、获得什么}{2}{section.2.3}%
+\contentsline {chapter}{\numberline {第三章\hspace {.3em}}系统全链路总览}{4}{chapter.3}%
+\contentsline {section}{\numberline {3.1}真实案例的系统结构}{4}{section.3.1}%
+\contentsline {section}{\numberline {3.2}从代码模块看职责分工}{5}{section.3.2}%
+\contentsline {chapter}{\numberline {第四章\hspace {.3em}}第一步：PDF 如何变成可计算文本}{6}{chapter.4}%
+\contentsline {section}{\numberline {4.1}PDF 只是阅读容器，不是知识对象}{6}{section.4.1}%
+\contentsline {section}{\numberline {4.2}本项目如何抽取文本}{6}{section.4.2}%
+\contentsline {section}{\numberline {4.3}为什么文本清洗不能太激进}{6}{section.4.3}%
+\contentsline {chapter}{\numberline {第五章\hspace {.3em}}第二步：为什么必须分块}{8}{chapter.5}%
+\contentsline {section}{\numberline {5.1}分块不是技术细节，而是系统的时间复杂度开关}{8}{section.5.1}%
+\contentsline {section}{\numberline {5.2}为什么 overlap 必须存在}{8}{section.5.2}%
+\contentsline {section}{\numberline {5.3}本次案例为什么只切成了 4 个 chunk}{8}{section.5.3}%
+\contentsline {paragraph}{好处：}{8}{paragraph*.10}%
+\contentsline {paragraph}{问题：}{8}{paragraph*.11}%
+\contentsline {chapter}{\numberline {第六章\hspace {.3em}}第三步：本体生成，本质上在做什么}{10}{chapter.6}%
+\contentsline {section}{\numberline {6.1}本体不是标签集合，而是系统的观察框架}{10}{section.6.1}%
+\contentsline {section}{\numberline {6.2}为什么这里必须先有问题，再有本体}{10}{section.6.2}%
+\contentsline {section}{\numberline {6.3}本项目的本体生成约束}{10}{section.6.3}%
+\contentsline {section}{\numberline {6.4}本次案例实际生成了什么}{10}{section.6.4}%
+\contentsline {chapter}{\numberline {第七章\hspace {.3em}}第四步：图谱构建，本质上在做什么}{12}{chapter.7}%
+\contentsline {section}{\numberline {7.1}图谱是世界模型，不是数据库截图}{12}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Graphiti Sidecar 在做什么}{12}{section.7.2}%
+\contentsline {section}{\numberline {7.3}为什么图谱是比 chunk 更强的中间表示}{12}{section.7.3}%
+\contentsline {section}{\numberline {7.4}本次案例图谱结果意味着什么}{13}{section.7.4}%
+\contentsline {section}{\numberline {7.5}为什么建图速度会慢}{13}{section.7.5}%
+\contentsline {chapter}{\numberline {第八章\hspace {.3em}}第五步：为什么图谱还不够，必须继续生成 Agent}{14}{chapter.8}%
+\contentsline {section}{\numberline {8.1}图谱里的实体不等于可发声主体}{14}{section.8.1}%
+\contentsline {section}{\numberline {8.2}本项目如何从图谱生成 Agent 配置}{14}{section.8.2}%
+\contentsline {section}{\numberline {8.3}为什么要把节点人格化}{14}{section.8.3}%
+\contentsline {section}{\numberline {8.4}本次案例里的真实结果}{14}{section.8.4}%
+\contentsline {chapter}{\numberline {第九章\hspace {.3em}}第六步：社会仿真如何把结构化记忆变成动态舆情}{16}{chapter.9}%
+\contentsline {section}{\numberline {9.1}什么叫“在图谱上做仿真”}{16}{section.9.1}%
+\contentsline {section}{\numberline {9.2}本次案例的仿真配置}{16}{section.9.2}%
+\contentsline {section}{\numberline {9.3}为什么仿真不是“一次多轮问答”}{16}{section.9.3}%
+\contentsline {section}{\numberline {9.4}这次仿真为什么看起来并不快}{16}{section.9.4}%
+\contentsline {section}{\numberline {9.5}为什么仿真进程结束后还在}{17}{section.9.5}%
+\contentsline {chapter}{\numberline {第十章\hspace {.3em}}第七步：报告为什么不是直接摘要，而是二阶推理}{18}{chapter.10}%
+\contentsline {section}{\numberline {10.1}报告层真正依赖的不是原文，而是两个世界}{18}{section.10.1}%
+\contentsline {section}{\numberline {10.2}ReportAgent 的工作方式}{18}{section.10.2}%
+\contentsline {section}{\numberline {10.3}为什么报告阶段的搜索质量如此重要}{18}{section.10.3}%
+\contentsline {section}{\numberline {10.4}这次报告最后输出了什么}{19}{section.10.4}%
+\contentsline {chapter}{\numberline {第十一章\hspace {.3em}}武汉大学案例的真实运行复盘}{20}{chapter.11}%
+\contentsline {section}{\numberline {11.1}时间分布}{20}{section.11.1}%
+\contentsline {section}{\numberline {11.2}规模分布}{21}{section.11.2}%
+\contentsline {section}{\numberline {11.3}为什么全链路比“官方演示”慢很多}{21}{section.11.3}%
+\contentsline {chapter}{\numberline {第十二章\hspace {.3em}}速度、质量与瓶颈：为什么会慢，为什么会失真}{22}{chapter.12}%
+\contentsline {section}{\numberline {12.1}真正的主瓶颈：远端大模型链路}{22}{section.12.1}%
+\contentsline {section}{\numberline {12.2}第二瓶颈：主体数与采访数}{22}{section.12.2}%
+\contentsline {section}{\numberline {12.3}第三瓶颈：大 chunk 带来的检索退化}{22}{section.12.3}%
+\contentsline {section}{\numberline {12.4}本次运行有没有错误}{22}{section.12.4}%
+\contentsline {chapter}{\numberline {第十三章\hspace {.3em}}如何做参数调优：不是越快越好，而是找到系统平衡点}{24}{chapter.13}%
+\contentsline {section}{\numberline {13.1}调优要先决定优化目标}{24}{section.13.1}%
+\contentsline {section}{\numberline {13.2}对本案例最有价值的调优旋钮}{24}{section.13.2}%
+\contentsline {section}{\numberline {13.3}推荐的下一步实验}{24}{section.13.3}%
+\contentsline {chapter}{\numberline {第十四章\hspace {.3em}}结语：什么叫“可被推演的中间世界模型”}{26}{chapter.14}%
+\contentsline {chapter}{附录：本次案例的真实配置与日志摘要}{27}{appendix*.20}%
+\contentsline {section}{\numberline {.1}关键配置摘要}{27}{section.Alph0.1}%
+\contentsline {section}{\numberline {.2}关键时间戳摘要}{27}{section.Alph0.2}%
+\contentsline {section}{\numberline {.3}检索质量摘要}{27}{section.Alph0.3}%
+\contentsline {section}{\numberline {.4}典型日志片段}{27}{section.Alph0.4}%
+\contentsline {chapter}{附录：把这份讲义复用到别的案例时，应该先改什么}{29}{appendix*.23}%

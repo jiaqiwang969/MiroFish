@@ -16,6 +16,7 @@ from zep_cloud import EpisodeData, EntityEdgeSourceTarget
 from ..config import Config
 from ..models.task import TaskManager, TaskStatus
 from ..utils.zep_paging import fetch_all_nodes, fetch_all_edges
+from .graph_backend import get_graph_backend
 from .text_processor import TextProcessor
 
 
@@ -42,21 +43,29 @@ class GraphBuilderService:
     负责调用Zep API构建知识图谱
     """
     
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, graph_backend=None):
+        self.task_manager = TaskManager()
+        self.graph_backend = None
+
+        if Config.GRAPH_BACKEND == "graphiti":
+            self.api_key = None
+            self.client = None
+            self.graph_backend = graph_backend or get_graph_backend()
+            return
+
         self.api_key = api_key or Config.ZEP_API_KEY
         if not self.api_key:
             raise ValueError("ZEP_API_KEY 未配置")
-        
+
         self.client = Zep(api_key=self.api_key)
-        self.task_manager = TaskManager()
     
     def build_graph_async(
         self,
         text: str,
         ontology: Dict[str, Any],
         graph_name: str = "MiroFish Graph",
-        chunk_size: int = 500,
-        chunk_overlap: int = 50,
+        chunk_size: int = Config.DEFAULT_CHUNK_SIZE,
+        chunk_overlap: int = Config.DEFAULT_CHUNK_OVERLAP,
         batch_size: int = 3
     ) -> str:
         """
@@ -186,6 +195,9 @@ class GraphBuilderService:
     
     def create_graph(self, name: str) -> str:
         """创建Zep图谱（公开方法）"""
+        if self.graph_backend is not None:
+            return self.graph_backend.create_graph(name)
+
         graph_id = f"mirofish_{uuid.uuid4().hex[:16]}"
         
         self.client.graph.create(
@@ -198,6 +210,10 @@ class GraphBuilderService:
     
     def set_ontology(self, graph_id: str, ontology: Dict[str, Any]):
         """设置图谱本体（公开方法）"""
+        if self.graph_backend is not None:
+            self.graph_backend.set_ontology(graph_id, ontology)
+            return
+
         import warnings
         from typing import Optional
         from pydantic import Field
@@ -293,6 +309,34 @@ class GraphBuilderService:
         progress_callback: Optional[Callable] = None
     ) -> List[str]:
         """分批添加文本到图谱，返回所有 episode 的 uuid 列表"""
+        if self.graph_backend is not None:
+            episode_uuids = []
+            total_chunks = len(chunks)
+
+            for i in range(0, total_chunks, batch_size):
+                batch_chunks = chunks[i:i + batch_size]
+                batch_num = i // batch_size + 1
+                total_batches = (total_chunks + batch_size - 1) // batch_size
+
+                if progress_callback:
+                    progress = (i + len(batch_chunks)) / total_chunks
+                    progress_callback(
+                        f"发送第 {batch_num}/{total_batches} 批数据 ({len(batch_chunks)} 块)...",
+                        progress
+                    )
+
+                episode_uuids.extend(
+                    self.graph_backend.add_episodes(
+                        graph_id,
+                        [
+                            {"content": chunk, "source": "text"}
+                            for chunk in batch_chunks
+                        ],
+                    )
+                )
+
+            return episode_uuids
+
         episode_uuids = []
         total_chunks = len(chunks)
         
@@ -345,6 +389,11 @@ class GraphBuilderService:
         timeout: int = 600
     ):
         """等待所有 episode 处理完成（通过查询每个 episode 的 processed 状态）"""
+        if self.graph_backend is not None:
+            if progress_callback:
+                progress_callback("Graphiti sidecar 已接收全部 episodes", 1.0)
+            return
+
         if not episode_uuids:
             if progress_callback:
                 progress_callback("无需等待（没有 episode）", 1.0)
@@ -396,6 +445,21 @@ class GraphBuilderService:
     
     def _get_graph_info(self, graph_id: str) -> GraphInfo:
         """获取图谱信息"""
+        if self.graph_backend is not None:
+            graph_data = self.graph_backend.get_graph_data(graph_id)
+            entity_types = set()
+            for node in graph_data.get("nodes", []):
+                for label in node.get("labels", []):
+                    if label not in ["Entity", "Node"]:
+                        entity_types.add(label)
+
+            return GraphInfo(
+                graph_id=graph_id,
+                node_count=graph_data.get("node_count", 0),
+                edge_count=graph_data.get("edge_count", 0),
+                entity_types=list(entity_types),
+            )
+
         # 获取节点（分页）
         nodes = fetch_all_nodes(self.client, graph_id)
 
@@ -427,6 +491,9 @@ class GraphBuilderService:
         Returns:
             包含nodes和edges的字典，包括时间信息、属性等详细数据
         """
+        if self.graph_backend is not None:
+            return self.graph_backend.get_graph_data(graph_id)
+
         nodes = fetch_all_nodes(self.client, graph_id)
         edges = fetch_all_edges(self.client, graph_id)
 
@@ -496,5 +563,8 @@ class GraphBuilderService:
     
     def delete_graph(self, graph_id: str):
         """删除图谱"""
-        self.client.graph.delete(graph_id=graph_id)
+        if self.graph_backend is not None:
+            self.graph_backend.delete_graph(graph_id)
+            return
 
+        self.client.graph.delete(graph_id=graph_id)
