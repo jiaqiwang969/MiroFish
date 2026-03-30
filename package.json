@@ -5,9 +5,12 @@
   "scripts": {
     "setup": "npm install && cd frontend && npm install",
     "setup:backend": "cd backend && uv sync",
-    "setup:all": "npm run setup && npm run setup:backend",
+    "setup:graphiti": "cd graphiti_service && uv sync",
+    "setup:all": "npm run setup && npm run setup:backend && npm run setup:graphiti",
     "dev": "concurrently --kill-others -n \"backend,frontend\" -c \"green,cyan\" \"npm run backend\" \"npm run frontend\"",
+    "dev:graphiti": "concurrently --kill-others -n \"graphiti,backend,frontend\" -c \"magenta,green,cyan\" \"npm run graphiti\" \"npm run backend\" \"npm run frontend\"",
     "backend": "cd backend && uv run python run.py",
+    "graphiti": "cd graphiti_service && uv run python app.py",
     "frontend": "cd frontend && npm run dev",
     "build": "cd frontend && npm run build"
   },

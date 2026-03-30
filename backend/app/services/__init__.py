@@ -4,6 +4,14 @@
 
 from .ontology_generator import OntologyGenerator
 from .graph_builder import GraphBuilderService
+from .graph_backend import (
+    GraphBackend,
+    GraphBackendEdge,
+    GraphBackendNode,
+    GraphitiGraphBackend,
+    get_graph_backend,
+)
+from .graphiti_sidecar_client import GraphitiSidecarClient, GraphitiSidecarError
 from .text_processor import TextProcessor
 from .zep_entity_reader import ZepEntityReader, EntityNode, FilteredEntities
 from .oasis_profile_generator import OasisProfileGenerator, OasisAgentProfile
@@ -40,6 +48,13 @@ from .simulation_ipc import (
 __all__ = [
     'OntologyGenerator', 
     'GraphBuilderService', 
+    'GraphBackend',
+    'GraphBackendEdge',
+    'GraphBackendNode',
+    'GraphitiGraphBackend',
+    'GraphitiSidecarClient',
+    'GraphitiSidecarError',
+    'get_graph_backend',
     'TextProcessor',
     'ZepEntityReader',
     'EntityNode',
@@ -70,4 +85,3 @@ __all__ = [
     'CommandType',
     'CommandStatus',
 ]
-

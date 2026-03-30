@@ -19,6 +19,7 @@ from ..config import Config
 from ..utils.logger import get_logger
 from ..utils.llm_client import LLMClient
 from ..utils.zep_paging import fetch_all_nodes, fetch_all_edges
+from .graph_backend import GraphBackend, get_graph_backend
 
 logger = get_logger('mirofish.zep_tools')
 
@@ -421,15 +422,28 @@ class ZepToolsService:
     MAX_RETRIES = 3
     RETRY_DELAY = 2.0
     
-    def __init__(self, api_key: Optional[str] = None, llm_client: Optional[LLMClient] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        llm_client: Optional[LLMClient] = None,
+        graph_backend: Optional[GraphBackend] = None,
+    ):
+        self.backend_name = Config.GRAPH_BACKEND.lower()
         self.api_key = api_key or Config.ZEP_API_KEY
-        if not self.api_key:
-            raise ValueError("ZEP_API_KEY 未配置")
-        
-        self.client = Zep(api_key=self.api_key)
+        self.client = None
+        self.graph_backend = None
+        self._node_cache: Dict[str, NodeInfo] = {}
+
+        if self.backend_name == "graphiti":
+            self.graph_backend = graph_backend or get_graph_backend()
+        else:
+            if not self.api_key:
+                raise ValueError("ZEP_API_KEY 未配置")
+            self.client = Zep(api_key=self.api_key)
+
         # LLM客户端用于InsightForge生成子问题
         self._llm_client = llm_client
-        logger.info("ZepToolsService 初始化完成")
+        logger.info(f"ZepToolsService 初始化完成: backend={self.backend_name}")
     
     @property
     def llm(self) -> LLMClient:
@@ -484,6 +498,9 @@ class ZepToolsService:
             SearchResult: 搜索结果
         """
         logger.info(f"图谱搜索: graph_id={graph_id}, query={query[:50]}...")
+
+        if self.backend_name == "graphiti":
+            return self._local_search(graph_id, query, limit, scope)
         
         # 尝试使用Zep Cloud Search API
         try:
@@ -659,18 +676,33 @@ class ZepToolsService:
         """
         logger.info(f"获取图谱 {graph_id} 的所有节点...")
 
-        nodes = fetch_all_nodes(self.client, graph_id)
-
         result = []
-        for node in nodes:
-            node_uuid = getattr(node, 'uuid_', None) or getattr(node, 'uuid', None) or ""
-            result.append(NodeInfo(
-                uuid=str(node_uuid) if node_uuid else "",
-                name=node.name or "",
-                labels=node.labels or [],
-                summary=node.summary or "",
-                attributes=node.attributes or {}
-            ))
+
+        if self.backend_name == "graphiti":
+            nodes = self.graph_backend.list_nodes(graph_id)
+            for node in nodes:
+                node_info = NodeInfo(
+                    uuid=node.uuid or "",
+                    name=node.name or "",
+                    labels=node.labels or [],
+                    summary=node.summary or "",
+                    attributes=node.attributes or {},
+                )
+                result.append(node_info)
+        else:
+            nodes = fetch_all_nodes(self.client, graph_id)
+
+            for node in nodes:
+                node_uuid = getattr(node, 'uuid_', None) or getattr(node, 'uuid', None) or ""
+                result.append(NodeInfo(
+                    uuid=str(node_uuid) if node_uuid else "",
+                    name=node.name or "",
+                    labels=node.labels or [],
+                    summary=node.summary or "",
+                    attributes=node.attributes or {}
+                ))
+
+        self._node_cache.update({node.uuid: node for node in result if node.uuid})
 
         logger.info(f"获取到 {len(result)} 个节点")
         return result
@@ -688,32 +720,54 @@ class ZepToolsService:
         """
         logger.info(f"获取图谱 {graph_id} 的所有边...")
 
-        edges = fetch_all_edges(self.client, graph_id)
-
         result = []
-        for edge in edges:
-            edge_uuid = getattr(edge, 'uuid_', None) or getattr(edge, 'uuid', None) or ""
-            edge_info = EdgeInfo(
-                uuid=str(edge_uuid) if edge_uuid else "",
-                name=edge.name or "",
-                fact=edge.fact or "",
-                source_node_uuid=edge.source_node_uuid or "",
-                target_node_uuid=edge.target_node_uuid or ""
-            )
+        if self.backend_name == "graphiti":
+            node_map = {node.uuid: node.name for node in self.get_all_nodes(graph_id)}
+            edges = self.graph_backend.list_edges(graph_id)
+            for edge in edges:
+                edge_info = EdgeInfo(
+                    uuid=edge.uuid or "",
+                    name=edge.name or "",
+                    fact=edge.fact or "",
+                    source_node_uuid=edge.source_node_uuid or "",
+                    target_node_uuid=edge.target_node_uuid or "",
+                    source_node_name=node_map.get(edge.source_node_uuid),
+                    target_node_name=node_map.get(edge.target_node_uuid),
+                )
 
-            # 添加时间信息
-            if include_temporal:
-                edge_info.created_at = getattr(edge, 'created_at', None)
-                edge_info.valid_at = getattr(edge, 'valid_at', None)
-                edge_info.invalid_at = getattr(edge, 'invalid_at', None)
-                edge_info.expired_at = getattr(edge, 'expired_at', None)
+                if include_temporal:
+                    edge_info.created_at = edge.attributes.get("created_at")
+                    edge_info.valid_at = edge.attributes.get("valid_at")
+                    edge_info.invalid_at = edge.attributes.get("invalid_at")
+                    edge_info.expired_at = edge.attributes.get("expired_at")
 
-            result.append(edge_info)
+                result.append(edge_info)
+        else:
+            edges = fetch_all_edges(self.client, graph_id)
+
+            for edge in edges:
+                edge_uuid = getattr(edge, 'uuid_', None) or getattr(edge, 'uuid', None) or ""
+                edge_info = EdgeInfo(
+                    uuid=str(edge_uuid) if edge_uuid else "",
+                    name=edge.name or "",
+                    fact=edge.fact or "",
+                    source_node_uuid=edge.source_node_uuid or "",
+                    target_node_uuid=edge.target_node_uuid or ""
+                )
+
+                # 添加时间信息
+                if include_temporal:
+                    edge_info.created_at = getattr(edge, 'created_at', None)
+                    edge_info.valid_at = getattr(edge, 'valid_at', None)
+                    edge_info.invalid_at = getattr(edge, 'invalid_at', None)
+                    edge_info.expired_at = getattr(edge, 'expired_at', None)
+
+                result.append(edge_info)
 
         logger.info(f"获取到 {len(result)} 条边")
         return result
     
-    def get_node_detail(self, node_uuid: str) -> Optional[NodeInfo]:
+    def get_node_detail(self, node_uuid: str, graph_id: Optional[str] = None) -> Optional[NodeInfo]:
         """
         获取单个节点的详细信息
         
@@ -724,6 +778,13 @@ class ZepToolsService:
             节点信息或None
         """
         logger.info(f"获取节点详情: {node_uuid[:8]}...")
+
+        if self.backend_name == "graphiti":
+            if graph_id:
+                for node in self.get_all_nodes(graph_id):
+                    if node.uuid == node_uuid:
+                        return node
+            return self._node_cache.get(node_uuid)
         
         try:
             node = self._call_with_retry(
@@ -1043,7 +1104,7 @@ class ZepToolsService:
                 continue
             try:
                 # 单独获取每个相关节点的信息
-                node = self.get_node_detail(uuid)
+                node = self.get_node_detail(uuid, graph_id=graph_id)
                 if node:
                     node_map[uuid] = node
                     entity_type = next((l for l in node.labels if l not in ["Entity", "Node"]), "实体")
